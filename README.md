@@ -2,7 +2,7 @@
 
 # AiPathMaker-Web-Server_Side
 
-##结构
+## 结构
 ```
 backend/
 ├── __init__.py
