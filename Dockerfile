@@ -11,6 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制项目所有代码
 COPY . .
 
+# 安装 bash，便于容器内调试
+RUN apt-get update && apt-get install -y bash
+
 # 创建上传和结果目录（容器内）
 RUN mkdir -p uploads results
 

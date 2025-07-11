@@ -1,5 +1,8 @@
 import os
 import zipfile
+import tarfile
+import rarfile
+import py7zr
 import shutil
 import uuid
 import subprocess
@@ -9,13 +12,30 @@ from typing import Optional, List
 UPLOAD_ROOT = 'uploads'
 RESULT_ROOT = 'results'
 
-# 解压上传的zip文件到唯一临时目录，返回解压后路径和sessionId
+# 解压上传的压缩文件到唯一临时目录，返回解压后路径和sessionId
 def extract_zip(file_path: str) -> str:
     session_id = str(uuid.uuid4())
     extract_dir = os.path.join(UPLOAD_ROOT, session_id)
     os.makedirs(extract_dir, exist_ok=True)
-    with zipfile.ZipFile(file_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_dir)
+    ext = os.path.splitext(file_path)[1].lower()
+    try:
+        if ext == ".zip":
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+        elif ext in [".tar", ".gz", ".tgz", ".tar.gz"]:
+            with tarfile.open(file_path, 'r:*') as tar_ref:
+                tar_ref.extractall(extract_dir)
+        elif ext == ".rar":
+            with rarfile.RarFile(file_path) as rar_ref:
+                rar_ref.extractall(extract_dir)
+        elif ext == ".7z":
+            with py7zr.SevenZipFile(file_path, mode='r') as z:
+                z.extractall(extract_dir)
+        else:
+            raise ValueError("暂不支持该压缩格式")
+    except Exception as e:
+        print(f"解压失败: {e}")
+        raise
     return session_id, extract_dir
 
 # 根据方法限定名查找Java源码（假设限定名如 com.example.MyClass.myMethod）
@@ -66,4 +86,4 @@ def package_results(source_code: str, image_paths: List[str], zip_path: str):
     with zipfile.ZipFile(zip_path, 'w') as zipf:
         zipf.writestr('source.java', source_code)
         for img in image_paths:
-            zipf.write(img, os.path.basename(img)) 
+            zipf.write(img, os.path.basename(img))
