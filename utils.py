@@ -73,6 +73,11 @@ def extract_zip(file_path: str) -> str:
     except Exception as e:
         print(f"解压失败: {e}")
         raise
+    # 解压成功后删除原始压缩包
+    try:
+        os.remove(file_path)
+    except Exception as e:
+        print(f"删除原始压缩包失败: {e}")
     return session_id, extract_dir
 
 # 根据方法限定名查找Java源码（假设限定名如 com.example.MyClass.myMethod）
