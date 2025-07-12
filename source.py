@@ -5,10 +5,17 @@ import utils
 
 router = APIRouter()
 
-@router.post("/get-source")
-async def get_source(sessionId: str = Form(...), method: str = Form(...)):
-    project_dir = os.path.join("uploads", sessionId)
-    source = utils.find_java_method_source(project_dir, method)
+@router.post("/list-methods")
+async def list_methods(sessionId: str = Form(...), filePath: str = Form(...)):
+    file_abs_path = os.path.join("uploads", sessionId, filePath)
+    methods = utils.get_java_methods(file_abs_path)
+    return {"methods": methods}
+
+
+@router.post("/get-method-source")
+async def get_method_source(sessionId: str = Form(...), filePath: str = Form(...), methodName: str = Form(...)):
+    file_abs_path = os.path.join("uploads", sessionId, filePath)
+    source = utils.get_java_method_source_by_file(file_abs_path, methodName)
     if not source:
         return JSONResponse(status_code=404, content={"error": "Method not found"})
-    return {"source": source} 
+    return {"source": source}

@@ -22,7 +22,8 @@ async def upload_project(file: UploadFile = File(...)):
         print(f"已保存上传文件: {file_location}")
         session_id, extract_dir = utils.extract_zip(file_location)
         print(f"已解压到: {extract_dir}, sessionId: {session_id}")
-        return {"sessionId": session_id}
+        file_tree = utils.get_file_tree(extract_dir)
+        return {"sessionId": session_id, "fileTree": file_tree}
     except Exception as e:
         print(f"上传或解压失败: {e}")
         return {"error": f"上传或解压失败: {str(e)}"}
