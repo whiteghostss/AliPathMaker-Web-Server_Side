@@ -7,6 +7,8 @@ router = APIRouter()
 
 @router.post("/list-methods")
 async def list_methods(sessionId: str = Form(...), filePath: str = Form(...)):
+    if not filePath.lower().endswith(".java"):
+        return JSONResponse(status_code=400, content={"error": "不是java源代码"})
     file_abs_path = os.path.join("uploads", sessionId, filePath)
     methods = utils.get_java_methods(file_abs_path)
     return {"methods": methods}
@@ -14,6 +16,8 @@ async def list_methods(sessionId: str = Form(...), filePath: str = Form(...)):
 
 @router.post("/get-method-source")
 async def get_method_source(sessionId: str = Form(...), filePath: str = Form(...), methodName: str = Form(...)):
+    if not filePath.lower().endswith(".java"):
+        return JSONResponse(status_code=400, content={"error": "不是java源代码"})
     file_abs_path = os.path.join("uploads", sessionId, filePath)
     source = utils.get_java_method_source_by_file(file_abs_path, methodName)
     if not source:

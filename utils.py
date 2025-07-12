@@ -38,15 +38,42 @@ def get_java_methods(file_path: str) -> list:
         source = f.read()
     try:
         tree = javalang.parse.parse(source)
-        for _, node in tree:
+        class_stack = []
+        for path, node in tree:
+            if isinstance(node, javalang.tree.ClassDeclaration):
+                class_stack.append(node.name)
             if isinstance(node, javalang.tree.MethodDeclaration):
-                params = ', '.join(
-                    [p.type.name + ('[]' * p.type.dimensions) for p in node.parameters]
-                )
-                sig = f"{node.name}({params})"
+                param_list = []
+                for p in getattr(node, "parameters", []):
+                    try:
+                        # 类型名
+                        type_name = getattr(getattr(p, "type", None), "name", "UnknownType")
+                        # 维度
+                        dim = getattr(getattr(p, "type", None), "dimensions", 0)
+                        if isinstance(dim, list):
+                            dim_count = len(dim)
+                        elif isinstance(dim, int):
+                            dim_count = dim
+                        else:
+                            dim_count = 0
+                        param_str = type_name + ('[]' * dim_count)
+                    except Exception as param_e:
+                        print(f"警告: 解析参数失败: {param_e}, 参数对象: {p}")
+                        param_str = "UnknownType"
+                    param_list.append(param_str)
+                params = ', '.join(param_list)
+                # 获取当前类名（支持嵌套类）
+                class_name = '.'.join(class_stack) if class_stack else ''
+                if class_name:
+                    sig = f"{class_name}.{node.name}({params})"
+                else:
+                    sig = f"{node.name}({params})"
                 methods.append(sig)
+            # 离开类作用域时弹栈
+            if isinstance(node, javalang.tree.ClassDeclaration) and path and path[-1] is node:
+                class_stack.pop()
     except Exception as e:
-        print(f"解析Java方法失败: {e}")
+        print(f"解析Java方法失败: {e}\n文件: {file_path}")
     return methods
 
 # 解压上传的压缩文件到唯一临时目录，返回解压后路径和sessionId
@@ -88,19 +115,37 @@ def get_java_method_source_by_file(file_path: str, method_name: str) -> Optional
     with open(file_path, 'r', encoding='utf-8') as f:
         source = f.read()
     try:
+        # 支持 method_name 形如 ClassName.methodName(...) 或 methodName(...)
+        if '.' in method_name:
+            class_part, method_part = method_name.split('.', 1)
+            method_base = method_part.split('(')[0]
+        else:
+            class_part = None
+            method_base = method_name.split('(')[0]
         tree = javalang.parse.parse(source)
-        for _, node in tree:
-            if isinstance(node, javalang.tree.MethodDeclaration) and node.name == method_name:
-                lines = source.splitlines()
-                start = node.position.line - 1
-                end = start
-                brace = 0
-                for i in range(start, len(lines)):
-                    brace += lines[i].count('{') - lines[i].count('}')
-                    if brace == 0 and i > start:
-                        end = i
-                        break
-                return '\n'.join(lines[start:end+1])
+        class_stack = []
+        for path, node in tree:
+            if isinstance(node, javalang.tree.ClassDeclaration):
+                class_stack.append(node.name)
+            if isinstance(node, javalang.tree.MethodDeclaration):
+                current_class = '.'.join(class_stack) if class_stack else ''
+                # 判断类名和方法名是否匹配
+                class_match = (not class_part) or (current_class.endswith(class_part))
+                method_match = node.name == method_base
+                if class_match and method_match:
+                    lines = source.splitlines()
+                    start = node.position.line - 1
+                    end = start
+                    brace = 0
+                    for i in range(start, len(lines)):
+                        brace += lines[i].count('{') - lines[i].count('}')
+                        if brace == 0 and i > start:
+                            end = i
+                            break
+                    return '\n'.join(lines[start:end+1])
+            # 离开类作用域时弹栈
+            if isinstance(node, javalang.tree.ClassDeclaration) and path and path[-1] is node:
+                class_stack.pop()
     except Exception as e:
         print(f"解析Java方法源码失败: {e}")
     return None
