@@ -84,17 +84,93 @@ def extract_zip(file_path: str) -> str:
     ext = os.path.splitext(file_path)[1].lower()
     try:
         if ext == ".zip":
+            # 手动遍历条目，尝试多种编码解码文件名，彻底解决中文乱码
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_dir)
+                for info in zip_ref.infolist():
+                    # 依次尝试cp437->gbk, cp437->utf-8, utf-8
+                    tried = False
+                    for enc in [('cp437', 'gbk'), ('cp437', 'utf-8'), ('utf-8',)]:
+                        try:
+                            if len(enc) == 2:
+                                name = info.filename.encode(enc[0]).decode(enc[1])
+                            else:
+                                name = info.filename.encode(enc[0]).decode(enc[0])
+                            tried = True
+                            break
+                        except Exception:
+                            continue
+                    if not tried:
+                        name = info.filename
+                    target_path = os.path.join(extract_dir, name)
+                    if info.is_dir():
+                        os.makedirs(target_path, exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                        with open(target_path, 'wb') as f:
+                            f.write(zip_ref.read(info.filename))
         elif ext in [".tar", ".gz", ".tgz", ".tar.gz"]:
-            with tarfile.open(file_path, 'r:*') as tar_ref:
-                tar_ref.extractall(extract_dir)
+            # tarfile一般支持utf-8，极少有中文乱码，如有异常可补充兼容
+            try:
+                with tarfile.open(file_path, 'r:*') as tar_ref:
+                    tar_ref.extractall(extract_dir)
+            except Exception as e:
+                # 尝试逐个成员解码
+                with tarfile.open(file_path, 'r:*') as tar_ref:
+                    for member in tar_ref.getmembers():
+                        try:
+                            name = member.name.encode('utf-8').decode('gbk')
+                        except Exception:
+                            name = member.name
+                        member.name = name
+                        tar_ref.extract(member, extract_dir)
         elif ext == ".rar":
+            # 手动遍历条目，尝试多种编码解码文件名
             with rarfile.RarFile(file_path) as rar_ref:
-                rar_ref.extractall(extract_dir)
+                for info in rar_ref.infolist():
+                    tried = False
+                    for enc in [('cp437', 'gbk'), ('cp437', 'utf-8'), ('utf-8',)]:
+                        try:
+                            if len(enc) == 2:
+                                name = info.filename.encode(enc[0]).decode(enc[1])
+                            else:
+                                name = info.filename.encode(enc[0]).decode(enc[0])
+                            tried = True
+                            break
+                        except Exception:
+                            continue
+                    if not tried:
+                        name = info.filename
+                    target_path = os.path.join(extract_dir, name)
+                    if info.isdir():
+                        os.makedirs(target_path, exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                        with open(target_path, 'wb') as f:
+                            f.write(rar_ref.read(info))
         elif ext == ".7z":
+            # py7zr不支持直接指定文件名编码，需手动重命名
             with py7zr.SevenZipFile(file_path, mode='r') as z:
-                z.extractall(extract_dir)
+                allnames = z.getnames()
+                for orig_name in allnames:
+                    tried = False
+                    for enc in [('cp437', 'gbk'), ('cp437', 'utf-8'), ('utf-8',)]:
+                        try:
+                            if len(enc) == 2:
+                                name = orig_name.encode(enc[0]).decode(enc[1])
+                            else:
+                                name = orig_name.encode(enc[0]).decode(enc[0])
+                            tried = True
+                            break
+                        except Exception:
+                            continue
+                    if not tried:
+                        name = orig_name
+                    target_path = os.path.join(extract_dir, name)
+                    z.extract(targets=[orig_name], path=os.path.dirname(target_path))
+                    # 重命名
+                    real_path = os.path.join(extract_dir, orig_name)
+                    if os.path.exists(real_path):
+                        os.rename(real_path, target_path)
         else:
             raise ValueError("暂不支持该压缩格式")
     except Exception as e:
