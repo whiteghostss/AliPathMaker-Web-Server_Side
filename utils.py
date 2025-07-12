@@ -80,34 +80,6 @@ def extract_zip(file_path: str) -> str:
         print(f"删除原始压缩包失败: {e}")
     return session_id, extract_dir
 
-# 根据方法限定名查找Java源码（假设限定名如 com.example.MyClass.myMethod）
-def find_java_method_source(project_dir: str, method_fqn: str) -> Optional[str]:
-    parts = method_fqn.split('.')
-    if len(parts) < 3:
-        return None
-    class_path = os.path.join(project_dir, *parts[:-1]) + '.java'
-    method_name = parts[-1]
-    if not os.path.exists(class_path):
-        return None
-    with open(class_path, 'r', encoding='utf-8') as f:
-        source = f.read()
-    tree = javalang.parse.parse(source)
-    for path, node in tree:
-        if isinstance(node, javalang.tree.MethodDeclaration) and node.name == method_name:
-            # 获取方法源码
-            lines = source.splitlines()
-            start = node.position.line - 1
-            # 粗略查找方法结束（可优化）
-            end = start
-            brace = 0
-            for i in range(start, len(lines)):
-                brace += lines[i].count('{') - lines[i].count('}')
-                if brace == 0 and i > start:
-                    end = i
-                    break
-            return '\n'.join(lines[start:end+1])
-    return None
-
 # 根据文件路径和方法名查找Java源码
 def get_java_method_source_by_file(file_path: str, method_name: str) -> Optional[str]:
     import javalang
