@@ -6,3 +6,5 @@ rarfile
 py7zr
 pillow
 aiofiles
+chardet
+graphviz

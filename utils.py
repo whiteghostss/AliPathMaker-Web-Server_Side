@@ -8,6 +8,9 @@ import uuid
 import subprocess
 import javalang
 from typing import Optional, List
+import re
+from graphviz import Source
+import chardet
 
 UPLOAD_ROOT = 'uploads'
 RESULT_ROOT = 'results'
@@ -226,24 +229,56 @@ def get_java_method_source_by_file(file_path: str, method_name: str) -> Optional
         print(f"解析Java方法源码失败: {e}")
     return None
 
-# 调用 comex 工具生成路径图片，返回图片路径列表
+# 调用 comex 工具生成路径图片和文件，
 def call_comex(project_dir: str, method_fqn: str, output_dir: str) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
-    # 假设 comex 可执行文件名为 comex.exe 或 comex.py
-    # 这里 为comex.exe ，参数
     cmd = [
         'comex',
-        
-
-        
+        '--project', project_dir,
+        '--method', method_fqn,
+        '--output', output_dir
     ]
     subprocess.run(cmd, check=True)
-    # 返回 output_dir 下所有图片路径
     return [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.png')]
 
-# 打包源码和图片为zip
-def package_results(source_code: str, image_paths: List[str], zip_path: str):
+
+
+def save_source_to_java_file(session_id: str, source: str, class_name: str = "PathAnalysis") -> str:
+    """
+    先用utf-8编码保存完整Java文件，然后再将该文件内容转为（gbk编码：本地运行时comex是gbk解码）utf-8（覆盖原文件），返回文件路径(docker里comex是utf-8解码)。
+    """
+    output_dir = os.path.join(RESULT_ROOT, session_id)
+    os.makedirs(output_dir, exist_ok=True)
+    java_file = os.path.join(output_dir, f"{class_name}.java")
+    # 先utf-8保存
+    with open(java_file, "w", encoding="utf-8") as f:
+        f.write(f"public class {class_name} {{\n")
+        f.write(source)
+        f.write("\n}")
+    # 再转为gbk编码覆盖
+    with open(java_file, "r", encoding="utf-8") as f:
+        content = f.read()
+    with open(java_file, "w", encoding="utf-8", errors="replace") as f:
+        f.write(content)
+    return java_file
+
+
+def package_selected_files(zip_path: str, file_list: list, extra_texts: dict = None, base_dir: str = None):
+    """
+    将 file_list 中的所有文件打包进 zip_path。extra_texts 可选，所有文件必须在 base_dir（如 results/{session_id}）下。
+    """
+    if base_dir:
+        base_dir = os.path.abspath(base_dir)
     with zipfile.ZipFile(zip_path, 'w') as zipf:
-        zipf.writestr('source.java', source_code)
-        for img in image_paths:
-            zipf.write(img, os.path.basename(img))
+        for file in file_list:
+            abs_file = os.path.abspath(file)
+            if base_dir and not abs_file.startswith(base_dir):
+                raise ValueError(f"文件 {file} 不在指定目录 {base_dir} 下，禁止打包！")
+            arcname = os.path.basename(file)
+            zipf.write(abs_file, arcname)
+        if extra_texts:
+            for fname, content in extra_texts.items():
+                zipf.writestr(fname, content)
+
+
+

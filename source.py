@@ -2,6 +2,7 @@ from fastapi import APIRouter, Form
 from fastapi.responses import JSONResponse
 import os
 import utils
+from utils import save_source_to_java_file
 
 router = APIRouter()
 
@@ -22,4 +23,6 @@ async def get_method_source(sessionId: str = Form(...), filePath: str = Form(...
     source = utils.get_java_method_source_by_file(file_abs_path, methodName)
     if not source:
         return JSONResponse(status_code=404, content={"error": "Method not found"})
-    return {"source": source}
+    # 新增：保存源码到 results/{sessionId}/PathAnalysis.java
+    file_path = save_source_to_java_file(sessionId, source, class_name="PathAnalysis")
+    return {"source": source, "file": file_path}
