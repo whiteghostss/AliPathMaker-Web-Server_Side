@@ -7,12 +7,6 @@ bash deploy.sh
 # 可能出现 python:3.10-slim拉取的网络问题，可以先docker pull python:3.10-slim再运行bash deploy.sh
 ```
 
-### 本地运行（不使用 Docker）：
-
-```
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
 
 ## 常用调试命令
 
