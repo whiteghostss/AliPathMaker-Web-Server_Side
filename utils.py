@@ -191,8 +191,22 @@ def get_java_method_source_by_file(file_path: str, method_name: str) -> Optional
     import javalang
     if not os.path.exists(file_path):
         return None
-    with open(file_path, 'r', encoding='utf-8') as f:
-        source = f.read()
+    
+    # 检测文件编码
+    with open(file_path, 'rb') as f:
+        raw_data = f.read()
+        result = chardet.detect(raw_data)
+        encoding = result['encoding']
+    
+    # 使用检测到的编码打开文件
+    try:
+        with open(file_path, 'r', encoding=encoding) as f:
+            source = f.read()
+    except:
+        # 回退到utf-8
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            source = f.read()
+    
     try:
         # 支持 method_name 形如 ClassName.methodName(...) 或 methodName(...)
         if '.' in method_name:
@@ -201,32 +215,80 @@ def get_java_method_source_by_file(file_path: str, method_name: str) -> Optional
         else:
             class_part = None
             method_base = method_name.split('(')[0]
-        tree = javalang.parse.parse(source)
-        class_stack = []
-        for path, node in tree:
-            if isinstance(node, javalang.tree.ClassDeclaration):
-                class_stack.append(node.name)
-            if isinstance(node, javalang.tree.MethodDeclaration):
-                current_class = '.'.join(class_stack) if class_stack else ''
-                # 判断类名和方法名是否匹配
-                class_match = (not class_part) or (current_class.endswith(class_part))
-                method_match = node.name == method_base
-                if class_match and method_match:
-                    lines = source.splitlines()
-                    start = node.position.line - 1
-                    end = start
-                    brace = 0
-                    for i in range(start, len(lines)):
-                        brace += lines[i].count('{') - lines[i].count('}')
-                        if brace == 0 and i > start:
-                            end = i
-                            break
-                    return '\n'.join(lines[start:end+1])
-            # 离开类作用域时弹栈
-            if isinstance(node, javalang.tree.ClassDeclaration) and path and path[-1] is node:
-                class_stack.pop()
+        
+        # 先尝试使用javalang解析
+        try:
+            tree = javalang.parse.parse(source)
+            class_stack = []
+            for path, node in tree:
+                if isinstance(node, javalang.tree.ClassDeclaration):
+                    class_stack.append(node.name)
+                if isinstance(node, javalang.tree.MethodDeclaration):
+                    current_class = '.'.join(class_stack) if class_stack else ''
+                    # 判断类名和方法名是否匹配
+                    class_match = (not class_part) or (current_class.endswith(class_part))
+                    method_match = node.name == method_base
+                    if class_match and method_match:
+                        # 使用行号提取方法源码
+                        lines = source.splitlines()
+                        start = node.position.line - 1
+                        # 寻找方法体的结束
+                        end = start
+                        brace_count = 0
+                        found_opening_brace = False
+                        
+                        for i in range(start, len(lines)):
+                            line = lines[i]
+                            
+                            # 计算花括号
+                            for char in line:
+                                if char == '{':
+                                    brace_count += 1
+                                    found_opening_brace = True
+                                elif char == '}':
+                                    brace_count -= 1
+                            
+                            # 找到方法体结束
+                            if found_opening_brace and brace_count <= 0:
+                                end = i
+                                break
+                        
+                        # 提取整个方法
+                        return '\n'.join(lines[start:end+1])
+                # 离开类作用域时弹栈
+                if isinstance(node, javalang.tree.ClassDeclaration) and path and path[-1] is node:
+                    class_stack.pop()
+        except Exception as e:
+            print(f"javalang解析失败，使用替代方法: {e}")
+            
+        # 如果javalang解析失败，使用简单的文本匹配作为备用方案
+        lines = source.splitlines()
+        for i, line in enumerate(lines):
+            if method_base in line and '(' in line and ')' in line:
+                # 可能是方法定义行
+                start = i
+                brace_count = 0
+                found_opening_brace = False
+                
+                # 查找方法体
+                for j in range(start, len(lines)):
+                    current_line = lines[j]
+                    
+                    # 计算花括号
+                    for char in current_line:
+                        if char == '{':
+                            brace_count += 1
+                            found_opening_brace = True
+                        elif char == '}':
+                            brace_count -= 1
+                    
+                    # 找到方法体结束
+                    if found_opening_brace and brace_count <= 0:
+                        return '\n'.join(lines[start:j+1])
+    
     except Exception as e:
         print(f"解析Java方法源码失败: {e}")
+    
     return None
 
 # 调用 comex 工具生成路径图片和文件，
@@ -242,24 +304,50 @@ def call_comex(project_dir: str, method_fqn: str, output_dir: str) -> List[str]:
     return [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.png')]
 
 
+def get_formatted_time() -> str:
+    """
+    获取当前时间的格式化字符串，用于打包时间标记
+    """
+    from datetime import datetime
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 def save_source_to_java_file(session_id: str, source: str, class_name: str = "PathAnalysis") -> str:
     """
-    先用utf-8编码保存完整Java文件，然后再将该文件内容转为（gbk编码：本地运行时comex是gbk解码）utf-8（覆盖原文件），返回文件路径(docker里comex是utf-8解码)。
+    保存Java源码到文件，并确保格式和编码正确。
+    源码可能是方法体，也可能已经包含类声明，需要进行判断处理。
     """
     output_dir = os.path.join(RESULT_ROOT, session_id)
     os.makedirs(output_dir, exist_ok=True)
     java_file = os.path.join(output_dir, f"{class_name}.java")
-    # 先utf-8保存
-    with open(java_file, "w", encoding="utf-8") as f:
-        f.write(f"public class {class_name} {{\n")
-        f.write(source)
-        f.write("\n}")
-    # 再转为gbk编码覆盖
-    with open(java_file, "r", encoding="utf-8") as f:
-        content = f.read()
-    with open(java_file, "w", encoding="utf-8", errors="replace") as f:
-        f.write(content)
+    
+    # 清理源码，去除可能的前后空行
+    source = source.strip()
+    
+    # 判断源码是否已经包含类声明
+    if source.startswith("public class") or source.startswith("class"):
+        # 已包含类声明，直接保存
+        with open(java_file, "w", encoding="utf-8") as f:
+            f.write(source)
+    else:
+        # 只有方法体，添加类声明
+        with open(java_file, "w", encoding="utf-8") as f:
+            f.write(f"public class {class_name} {{\n")
+            f.write(source)
+            # 如果源码没有结束花括号，添加一个
+            if not source.rstrip().endswith("}"):
+                f.write("\n}")
+            else:
+                f.write("\n}")
+    
+    # 拷贝extract_paths_and_generate_dot.py到输出目录
+    try:
+        extract_script = os.path.join(os.path.dirname(os.path.dirname(output_dir)), "extract_paths_and_generate_dot.py")
+        if os.path.exists(extract_script):
+            shutil.copy(extract_script, output_dir)
+    except Exception as e:
+        print(f"复制路径提取脚本失败: {e}")
+    
     return java_file
 
 

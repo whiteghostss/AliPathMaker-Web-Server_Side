@@ -25,4 +25,8 @@ async def get_method_source(sessionId: str = Form(...), filePath: str = Form(...
         return JSONResponse(status_code=404, content={"error": "Method not found"})
     # 新增：保存源码到 results/{sessionId}/PathAnalysis.java
     file_path = save_source_to_java_file(sessionId, source, class_name="PathAnalysis")
-    return {"source": source, "file": file_path}
+    # 确保返回的是正确格式的JSON
+    return JSONResponse(content={
+        "source": source,
+        "file": file_path
+    })
