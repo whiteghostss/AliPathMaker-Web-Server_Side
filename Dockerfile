@@ -7,10 +7,18 @@ WORKDIR /app
 # 复制依赖文件并安装
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-# 安装构建工具（gcc、g++、make 等，tree-sitter 依赖）
-RUN apt-get update && apt-get install -y build-essential
-RUN apt-get update && apt-get install -y git
-RUN apt-get update && apt-get install -y graphviz
+
+# 安装系统依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    graphviz \
+    p7zip-full \
+    bash \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # 安装 comex 和升级 typer
 RUN pip install comex 
 RUN pip install --upgrade typer
@@ -18,11 +26,11 @@ RUN pip install --upgrade typer
 # 复制项目所有代码
 COPY . .
 
-# 安装 bash，便于容器内调试
-RUN apt-get update && apt-get install -y bash
-
 # 创建上传和结果目录（容器内）
 RUN mkdir -p uploads results
+
+# 确保目录权限正确
+RUN chmod -R 777 uploads results
 
 # 暴露 FastAPI 默认端口
 EXPOSE 8000

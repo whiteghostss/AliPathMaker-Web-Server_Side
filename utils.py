@@ -151,29 +151,66 @@ def extract_zip(file_path: str) -> str:
                         with open(target_path, 'wb') as f:
                             f.write(rar_ref.read(info))
         elif ext == ".7z":
-            # py7zr不支持直接指定文件名编码，需手动重命名
-            with py7zr.SevenZipFile(file_path, mode='r') as z:
-                allnames = z.getnames()
-                for orig_name in allnames:
-                    tried = False
-                    for enc in [('cp437', 'gbk'), ('cp437', 'utf-8'), ('utf-8',)]:
-                        try:
-                            if len(enc) == 2:
-                                name = orig_name.encode(enc[0]).decode(enc[1])
-                            else:
-                                name = orig_name.encode(enc[0]).decode(enc[0])
-                            tried = True
-                            break
-                        except Exception:
-                            continue
-                    if not tried:
-                        name = orig_name
-                    target_path = os.path.join(extract_dir, name)
-                    z.extract(targets=[orig_name], path=os.path.dirname(target_path))
-                    # 重命名
-                    real_path = os.path.join(extract_dir, orig_name)
-                    if os.path.exists(real_path):
-                        os.rename(real_path, target_path)
+            # 优先尝试使用外部7z命令行工具，提高解压成功率
+            try:
+                # 检查是否安装了7z命令行工具
+                subprocess.run(["7z", "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print("检测到7z命令行工具，使用它进行解压")
+                # 使用7z命令行工具解压
+                cmd = ["7z", "x", file_path, f"-o{extract_dir}", "-y"]
+                subprocess.run(cmd, check=True)
+                print("使用外部7z命令解压成功")
+            except Exception as e:
+                print(f"外部7z命令解压失败: {e}，尝试使用py7zr库")
+                # 如果外部命令失败，尝试使用py7zr库
+                try:
+                    with py7zr.SevenZipFile(file_path, mode='r') as z:
+                        # 先将所有文件解压到临时目录
+                        z.extractall(extract_dir)
+                        print("使用py7zr库解压成功")
+                    
+                    # 处理可能的编码问题 - 遍历解压后的文件和目录
+                    for root, dirs, files in os.walk(extract_dir):
+                        # 处理目录名称
+                        for dir_name in dirs[:]:  # 使用副本进行迭代，因为我们可能会修改dirs
+                            try:
+                                # 尝试不同的编码转换
+                                for enc in [('cp437', 'gbk'), ('cp437', 'utf-8')]:
+                                    try:
+                                        new_name = dir_name.encode(enc[0]).decode(enc[1])
+                                        if new_name != dir_name:
+                                            old_path = os.path.join(root, dir_name)
+                                            new_path = os.path.join(root, new_name)
+                                            if not os.path.exists(new_path):
+                                                os.rename(old_path, new_path)
+                                                print(f"重命名目录: {dir_name} -> {new_name}")
+                                            break
+                                    except Exception:
+                                        continue
+                            except Exception as e:
+                                print(f"处理目录名称编码失败: {dir_name}, {e}")
+                        
+                        # 处理文件名称
+                        for file_name in files:
+                            try:
+                                # 尝试不同的编码转换
+                                for enc in [('cp437', 'gbk'), ('cp437', 'utf-8')]:
+                                    try:
+                                        new_name = file_name.encode(enc[0]).decode(enc[1])
+                                        if new_name != file_name:
+                                            old_path = os.path.join(root, file_name)
+                                            new_path = os.path.join(root, new_name)
+                                            if not os.path.exists(new_path):
+                                                os.rename(old_path, new_path)
+                                                print(f"重命名文件: {file_name} -> {new_name}")
+                                            break
+                                    except Exception:
+                                        continue
+                            except Exception as e:
+                                print(f"处理文件名称编码失败: {file_name}, {e}")
+                except Exception as e2:
+                    print(f"py7zr库解压也失败: {e2}")
+                    raise Exception(f"无法解压7z文件，外部命令失败: {e}，py7zr失败: {e2}")
         else:
             raise ValueError("暂不支持该压缩格式")
     except Exception as e:

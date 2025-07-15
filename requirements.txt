@@ -3,7 +3,7 @@ uvicorn[standard]
 python-multipart
 javalang
 rarfile
-py7zr
+py7zr==0.20.5
 pillow
 aiofiles
 chardet

@@ -1,37 +1,65 @@
 import json
 import os
 import subprocess
+from collections import deque  # 导入deque用于实现队列
 
 def load_json(path):
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def find_all_paths(graph, start_node, end_nodes):
+    """
+    使用广度优先搜索查找从起点到终点的所有路径
+    避免环路，同时保证路径顺序更符合控制流的自然顺序
+    """
     paths = []
-    stack = [(start_node, [start_node])]
-    while stack:
-        (node, path) = stack.pop()
+    # 使用队列而不是栈，实现广度优先搜索
+    queue = deque([(start_node, [start_node])])
+    while queue:
+        (node, path) = queue.popleft()  # 从队列左侧弹出，保证广度优先
         if node in end_nodes:
             paths.append(path)
         else:
-            for next_node in graph.get(node, []):
+            # 按照节点ID排序，使路径更具确定性
+            next_nodes = sorted(graph.get(node, []))
+            for next_node in next_nodes:
                 if next_node not in path:  # 避免环路
-                    stack.append((next_node, path + [next_node]))
+                    queue.append((next_node, path + [next_node]))
     return paths
 
 def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
     with open(output_dot_path, 'w', encoding='utf-8') as f:
         f.write('digraph {\n')
-        # 全局图形设置 - 使用垂直布局，允许高度自适应
+        # 全局图形设置 - 使用垂直布局，允许高度自适应，优化短方法的显示
         f.write('  graph [\n')
         f.write('    rankdir=TB,\n')         # 从上到下布局
         f.write('    splines=ortho,\n')      # 使用直角连线
-        f.write('    nodesep=0.4,\n')        # 节点间水平间距
-        f.write('    ranksep=0.6,\n')        # 层级垂直间距
-        f.write('    newrank=true\n')        # 改进的排名算法
+        f.write('    nodesep=0.5,\n')        # 增加节点间水平间距
+        f.write('    ranksep=0.7,\n')        # 增加层级垂直间距
+        f.write('    newrank=true,\n')       # 改进的排名算法
+        f.write('    fontsize=12,\n')        # 增大默认字体
+        f.write('    dpi=300\n')             # 设置高DPI
         f.write('  ];\n')
-        f.write('  node [shape=box, style=filled, fillcolor=lightblue, fontname=Arial, margin="0.2,0.1"];\n')
-        f.write('  edge [fontname=Arial, fontsize=10];\n')
+        
+        # 优化节点样式，提高清晰度
+        f.write('  node [\n')
+        f.write('    shape=box,\n')
+        f.write('    style=filled,\n')
+        f.write('    fillcolor=lightblue,\n')
+        f.write('    fontname=Arial,\n')
+        f.write('    fontsize=12,\n')        # 增大节点字体
+        f.write('    margin="0.25,0.15",\n') # 增加内边距
+        f.write('    penwidth=1.5,\n')       # 增加边框粗细
+        f.write('    height=0.4\n')          # 增加最小高度
+        f.write('  ];\n')
+        
+        # 优化边线样式
+        f.write('  edge [\n')
+        f.write('    fontname=Arial,\n')
+        f.write('    fontsize=10,\n')        # 边标签字体大小
+        f.write('    penwidth=1.2,\n')       # 增加线条粗细
+        f.write('    arrowsize=0.8\n')       # 增大箭头
+        f.write('  ];\n')
         
         # 写入节点
         for node_id in path_nodes:
@@ -44,28 +72,50 @@ def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
             node_color = 'lightblue'
             if type_label == 'start':
                 node_color = 'lightgreen'
+                node_style = 'filled,bold'
             elif type_label == 'end' or node_id in path_nodes[-1:]:
                 node_color = 'lightpink'
+                node_style = 'filled,bold'
             
             f.write(f'  {node_id} [label="{label}", type_label="{type_label}", style="{node_style}", fillcolor="{node_color}"];\n')
         
-        # 写入边
+        # 创建路径节点顺序的映射，用于确定边是否在路径上
+        path_order = {node_id: idx for idx, node_id in enumerate(path_nodes)}
+        path_nodes_set = set(path_nodes)
+        
+        # 写入边 - 改进的边选择逻辑
         for edge in edges_info:
             src = edge['source']
             tgt = edge['target']
-            if src in path_nodes and tgt in path_nodes:
-                # 仅保留路径上的边（tgt 必须是 src 的下一个节点）
-                src_index = path_nodes.index(src)
-                if src_index + 1 < len(path_nodes) and path_nodes[src_index + 1] == tgt:
+            
+            # 检查源节点和目标节点是否都在路径中
+            if src in path_nodes_set and tgt in path_nodes_set:
+                src_idx = path_order.get(src)
+                tgt_idx = path_order.get(tgt)
+                
+                # 检查这条边是否是路径的一部分（目标节点在源节点之后）
+                if src_idx is not None and tgt_idx is not None and src_idx < tgt_idx:
+                    # 检查是否是直接相连的节点，或者是跳转边（如循环、条件跳转等）
+                    is_direct_edge = tgt_idx == src_idx + 1
+                    is_jump_edge = not is_direct_edge
+                    
                     label = edge.get('label', '').replace('"', '\\"')
                     color = edge.get('color', 'black')
                     controlflow_type = edge.get('controlflow_type', '').replace('"', '\\"')
+                    
                     # 设置边样式
-                    edge_style = "solid"
+                    edge_style = "solid" if is_direct_edge else "dashed"
+                    
                     if "true" in controlflow_type.lower():
                         color = "darkgreen"
+                        edge_style = "bold"
                     elif "false" in controlflow_type.lower():
                         color = "red"
+                        edge_style = "bold"
+                    
+                    # 为跳转边添加更明显的标记
+                    if is_jump_edge:
+                        label = f"jump: {label}" if label else "jump"
                     
                     f.write(f'  {src} -> {tgt} [color="{color}", controlflow_type="{controlflow_type}", label="{label}", style="{edge_style}"];\n')
         f.write('}\n')
@@ -105,13 +155,21 @@ def main():
 
     # 找到所有起点和终点
     start_nodes = [node['id'] for node in nodes if node.get('type_label') == 'start']
-    # 终点：没有出边的节点
-    all_targets = set(link['target'] for link in links)
-    all_sources = set(link['source'] for link in links)
-    end_nodes = list(all_targets - all_sources)
+    # 优先使用type_label为end的节点作为终点
+    end_nodes = [node['id'] for node in nodes if node.get('type_label') == 'end']
+    
+    # 如果没有明确标记的终点，则使用没有出边的节点作为终点
     if not end_nodes:
-        # 如果没有没有出边的节点，则找出邻接表中没有出边的节点
-        end_nodes = [node_id for node_id in nodes_info if node_id not in graph]
+        all_targets = set(link['target'] for link in links)
+        all_sources = set(link['source'] for link in links)
+        end_nodes = list(all_targets - all_sources)
+        
+        # 如果仍然没有终点，则找出邻接表中没有出边的节点
+        if not end_nodes:
+            end_nodes = [node_id for node_id in nodes_info if node_id not in graph]
+    
+    print(f"找到起点节点: {start_nodes}")
+    print(f"找到终点节点: {end_nodes}")
 
     # 对每个起点，查找所有到任意终点的路径
     all_paths = []
@@ -130,11 +188,14 @@ def main():
 
         # 使用 dot 命令生成图片，添加参数以优化图像
         try:
-            # 使用垂直布局引擎，允许高度自适应
+            # 使用垂直布局引擎，允许高度自适应，提高DPI和清晰度
             cmd = ['dot', '-Tpng', 
-                   '-Gdpi=150',      # 高分辨率
-                   '-Gnodesep=0.4',  # 节点间隔
-                   '-Granksep=0.6',  # 层级间隔
+                   '-Gdpi=300',       # 提高DPI到300以增强清晰度
+                   '-Gnodesep=0.5',   # 增加节点间隔以提高可读性
+                   '-Granksep=0.7',   # 增加层级间隔
+                   '-Gfontsize=12',   # 增大字体大小
+                   '-Nfontsize=12',   # 增大节点字体大小
+                   '-Efontsize=10',   # 增大边标签字体大小
                    dot_path, 
                    '-o', img_path]
             subprocess.run(cmd, check=True)
