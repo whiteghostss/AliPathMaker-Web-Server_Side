@@ -27,6 +27,23 @@ def find_all_paths(graph, start_node, end_nodes):
                     queue.append((next_node, path + [next_node]))
     return paths
 
+def wrap_label(label, width=40):
+    # 按空格分割，拼接时每行不超过width字符
+    words = label.split(' ')
+    lines = []
+    current = ''
+    for word in words:
+        if len(current) + len(word) + 1 > width:
+            lines.append(current)
+            current = word
+        else:
+            if current:
+                current += ' '
+            current += word
+    if current:
+        lines.append(current)
+    return '\n'.join(lines)
+
 def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
     with open(output_dot_path, 'w', encoding='utf-8') as f:
         f.write('digraph {\n')
@@ -65,6 +82,7 @@ def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
         for node_id in path_nodes:
             node = nodes_info[node_id]
             label = node['label'].replace('"', '\\"')
+            label = wrap_label(label, width=40)  # 自动换行
             type_label = node.get('type_label', '')
             
             # 根据节点类型设置不同样式
