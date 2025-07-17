@@ -117,7 +117,8 @@ def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
                     if is_jump_edge:
                         label = f"jump: {label}" if label else "jump"
                     
-                    f.write(f'  {src} -> {tgt} [color="{color}", controlflow_type="{controlflow_type}", label="{label}", style="{edge_style}"];\n')
+                    # 将label改为xlabel，以解决正交边与标签冲突的问题
+                    f.write(f'  {src} -> {tgt} [color="{color}", controlflow_type="{controlflow_type}", xlabel="{label}", style="{edge_style}"];\n')
         f.write('}\n')
 
 # 添加获取图片尺寸的函数
@@ -129,6 +130,8 @@ def get_image_dimensions(image_path):
     except Exception as e:
         print(f"获取图片尺寸失败: {e}")
         return (0, 0)
+
+
 
 def main():
     json_path = 'output.json'
@@ -185,6 +188,7 @@ def main():
 
         # 生成 dot 文件
         generate_dot_for_path(path, nodes_info, links, dot_path)
+        
 
         # 使用 dot 命令生成图片，添加参数以优化图像
         try:
@@ -198,9 +202,43 @@ def main():
                    '-Efontsize=10',   # 增大边标签字体大小
                    dot_path, 
                    '-o', img_path]
+            
+            import subprocess
             subprocess.run(cmd, check=True)
+            
+            # 如果dot命令失败，尝试使用不同的布局引擎
+            if not os.path.exists(img_path) or os.path.getsize(img_path) == 0:
+                print(f"dot引擎生成图片失败，尝试使用fdp引擎: {dot_path}")
+                fdp_cmd = ['fdp', '-Tpng', 
+                          '-Gdpi=300',
+                          '-Gorientation=portrait',
+                          '-Gfontsize=12',
+                          dot_path, 
+                          '-o', img_path]
+                subprocess.run(fdp_cmd, check=True)
+                
+                # 如果fdp也失败，尝试使用neato引擎
+                if not os.path.exists(img_path) or os.path.getsize(img_path) == 0:
+                    print(f"fdp引擎也失败，尝试使用neato引擎: {dot_path}")
+                    neato_cmd = ['neato', '-Tpng', 
+                               '-Gdpi=300',
+                               dot_path, 
+                               '-o', img_path]
+                    subprocess.run(neato_cmd, check=True)
         except Exception as e:
             print(f'生成图片出错: {dot_path}: {e}')
+            # 尝试使用最简单的命令
+            try:
+                simple_cmd = ['dot', '-Tpng', dot_path, '-o', img_path]
+                subprocess.run(simple_cmd, check=True)
+            except Exception as e2:
+                print(f'简单命令也失败: {e2}')
+                # 最后尝试使用circo引擎，它对某些图形结构更友好
+                try:
+                    circo_cmd = ['circo', '-Tpng', dot_path, '-o', img_path]
+                    subprocess.run(circo_cmd, check=True)
+                except Exception as e3:
+                    print(f'所有引擎都失败: {e3}')
 
         # 获取图片尺寸
         img_width, img_height = get_image_dimensions(img_path)
@@ -232,5 +270,8 @@ def main():
     print(f'DOT 文件保存在: {dot_output_dir}')
     print(f'图片保存在: {img_output_dir}')
     print(f'JSON 文件保存在: {json_output_dir}')
+
+
+
 if __name__ == '__main__':
     main()
