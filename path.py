@@ -178,7 +178,7 @@ async def analyze_paths(sessionId: str = Form(...)):
         for old_dir in ['paths_dot', 'paths_img', 'paths_json']:
             old_dir_path = os.path.join(output_dir, old_dir)
             if os.path.exists(old_dir_path):
-                for old_file in os.listdir(old_dir_path):
+                 for old_file in utils.natural_sort(os.listdir(old_dir_path)):
                     os.remove(os.path.join(old_dir_path, old_file))
     except Exception as e:
         print(f"清理旧文件失败: {e}")
@@ -234,9 +234,9 @@ async def analyze_paths(sessionId: str = Form(...)):
     paths_img_dir = os.path.join(output_dir, 'paths_img')
     paths_json_dir = os.path.join(output_dir, 'paths_json')
 
-    pictures_files = sorted([os.path.join('results', sessionId, 'paths_img', f) for f in os.listdir(paths_img_dir) if f.endswith('.png')])
-    paths_files = sorted([os.path.join('results', sessionId, 'paths_json', f) for f in os.listdir(paths_json_dir) if f.endswith('.json')])
-    dots_files = sorted([os.path.join('results', sessionId, 'paths_dot', f) for f in os.listdir(paths_dot_dir) if f.endswith('.dot')])
+    pictures_files = [os.path.join('results', sessionId, 'paths_img', f) for f in utils.natural_sort(os.listdir(paths_img_dir)) if f.endswith('.png')]
+    paths_files = [os.path.join('results', sessionId, 'paths_json', f) for f in utils.natural_sort(os.listdir(paths_json_dir)) if f.endswith('.json')]
+    dots_files = [os.path.join('results', sessionId, 'paths_dot', f) for f in utils.natural_sort(os.listdir(paths_dot_dir)) if f.endswith('.dot')]
 
     # 5. 组装 paths 信息
     paths = []
