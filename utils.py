@@ -406,4 +406,12 @@ def package_selected_files(zip_path: str, file_list: list, extra_texts: dict = N
                 zipf.writestr(fname, content)
 
 
+def natural_sort(file_list):
+    import re
+    def alphanum_key(key):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', key)]
+    return sorted(file_list, key=alphanum_key)
+
+
+
 
