@@ -56,6 +56,7 @@ def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
         f.write('    newrank=true,\n')       # 改进的排名算法
         f.write('    fontsize=12,\n')        # 增大默认字体
         f.write('    dpi=300\n')             # 设置高DPI
+        f.write('    fontname="WenQuanYi Zen Hei",\n')
         f.write('  ];\n')
         
         # 优化节点样式，提高清晰度
@@ -63,7 +64,7 @@ def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
         f.write('    shape=box,\n')
         f.write('    style=filled,\n')
         f.write('    fillcolor=lightblue,\n')
-        f.write('    fontname=Arial,\n')
+        f.write('    fontname="WenQuanYi Zen Hei",\n')
         f.write('    fontsize=12,\n')        # 增大节点字体
         f.write('    margin="0.25,0.15",\n') # 增加内边距
         f.write('    penwidth=1.5,\n')       # 增加边框粗细
@@ -72,7 +73,7 @@ def generate_dot_for_path(path_nodes, nodes_info, edges_info, output_dot_path):
         
         # 优化边线样式
         f.write('  edge [\n')
-        f.write('    fontname=Arial,\n')
+        f.write('    fontname="WenQuanYi Zen Hei",\n')
         f.write('    fontsize=10,\n')        # 边标签字体大小
         f.write('    penwidth=1.2,\n')       # 增加线条粗细
         f.write('    arrowsize=0.8\n')       # 增大箭头

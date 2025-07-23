@@ -6,6 +6,7 @@ import os
 import utils
 import re
 import json
+import uuid
 
 class PathFileItem(BaseModel):
     png: Optional[str] = None
@@ -63,6 +64,7 @@ async def package_and_download(data: PackageRequest):
     
     base_dir = os.path.abspath(os.path.join("results", sessionId))
     file_list = []
+    arc_file_list = []  # (绝对路径, zip内相对路径)
     
     # 必选：自动查找PathAnalysis.java和output.png
     java_path = os.path.join(base_dir, "PathAnalysis.java")
@@ -71,6 +73,7 @@ async def package_and_download(data: PackageRequest):
         if not os.path.exists(f):
             return JSONResponse(status_code=404, content={"error": f"未找到文件: {f}"})
         file_list.append(f)
+        arc_file_list.append((f, os.path.basename(f)))
     
     # 可选
     if output_json:
@@ -78,13 +81,15 @@ async def package_and_download(data: PackageRequest):
         if not os.path.exists(json_path):
             return JSONResponse(status_code=404, content={"error": f"未找到文件: {json_path}"})
         file_list.append(json_path)
+        arc_file_list.append((json_path, os.path.basename(json_path)))
     if output_dot:
         dot_path = os.path.join(base_dir, output_dot)
         if not os.path.exists(dot_path):
             return JSONResponse(status_code=404, content={"error": f"未找到文件: {dot_path}"})
         file_list.append(dot_path)
+        arc_file_list.append((dot_path, os.path.basename(dot_path)))
     
-    # 路径多选
+    # 路径多选，分目录
     for path_item in selected_paths:
         for file_name in [path_item.png, path_item.dot, path_item.json]:
             if file_name:
@@ -92,20 +97,36 @@ async def package_and_download(data: PackageRequest):
                 if not os.path.exists(file_path):
                     return JSONResponse(status_code=404, content={"error": f"未找到路径相关文件: {file_path}"})
                 file_list.append(file_path)
+                # 按类型分目录
+                ext = os.path.splitext(file_name)[1].lower()
+                if ext == ".dot":
+                    arcname = f"dot/{os.path.basename(file_name)}"
+                elif ext == ".json":
+                    arcname = f"json/{os.path.basename(file_name)}"
+                elif ext in [".png", ".jpg", ".jpeg", ".bmp", ".gif"]:
+                    arcname = f"img/{os.path.basename(file_name)}"
+                else:
+                    arcname = os.path.basename(file_name)
+                arc_file_list.append((file_path, arcname))
     
     # 简化压缩包命名逻辑：只使用方法名和会话ID
-    zip_filename = sessionId
+    # zip_filename = sessionId
     
     # 如果前端提供了方法名，使用方法名命名
     if method_name:
         safe_method_name = get_safe_filename(method_name)
-        zip_filename = f"{safe_method_name}_{sessionId}"
+        unique_id = str(uuid.uuid4())
+        zip_filename = f"{safe_method_name}_{unique_id}"
     else:
         # 尝试从Java文件中提取方法信息
         method_info = extract_method_info_from_java(java_path)
         if method_info:
             safe_method_info = get_safe_filename(method_info)
-            zip_filename = f"{safe_method_info}_{sessionId}"
+            unique_id = str(uuid.uuid4())
+            zip_filename = f"{safe_method_info}_{unique_id}"
+        else:
+            unique_id = str(uuid.uuid4())
+            zip_filename = f"PathAnalysis_{unique_id}"
     
     # 生成最终的zip路径 - 不再添加额外标识
     zip_path = os.path.join("results", f"{zip_filename}.zip")
@@ -120,11 +141,47 @@ async def package_and_download(data: PackageRequest):
             "files": [os.path.basename(f) for f in file_list]
         }
         
+        # ========== 生成 method_info.txt =============
+        # 1. 方法所在类在原始上传包中的路径
+        # 假设上传解压目录为 uploads/{sessionId}，查找 .java 文件路径
+        upload_dir = os.path.abspath(os.path.join("uploads", sessionId))
+        java_file_path = None
+        for root, dirs, files in os.walk(upload_dir):
+            for file in files:
+                if file.endswith(".java"):
+                    java_file_path = os.path.join(root, file)
+                    break
+            if java_file_path:
+                break
+        java_file_rel = os.path.relpath(java_file_path, upload_dir) if java_file_path else "未找到原始Java文件"
+        # 2. 方法源码（取 results/{sessionId}/PathAnalysis.java 全部内容）
+        method_source = ""
+        try:
+            with open(java_path, "r", encoding="utf-8") as f:
+                method_source = f.read()
+        except Exception as e:
+            method_source = f"读取 PathAnalysis.java 失败: {e}"
+        # 3. 用户所选择的路径（文件名列表）
+        selected_path_files = []
+        for path_item in selected_paths:
+            for file_name in [path_item.png, path_item.dot, path_item.json]:
+                if file_name:
+                    selected_path_files.append(file_name)
+        # 组织内容
+        txt_content = (
+            f"【方法类原始路径】\n{java_file_rel}\n"
+            f"\n==============================\n"
+            f"【方法源码】\n{method_source}\n"
+            f"\n==============================\n"
+            f"【所选路径文件】\n" + '\n'.join(selected_path_files) + '\n'
+        )
+        extra_texts = {"metadata.json": json.dumps(metadata, ensure_ascii=False, indent=2), "method_info.txt": txt_content}
+        
         # 将元数据添加到打包内容
         utils.package_selected_files(
             zip_path, 
-            file_list, 
-            extra_texts={"metadata.json": json.dumps(metadata, ensure_ascii=False, indent=2)}, 
+            arc_file_list, 
+            extra_texts=extra_texts, 
             base_dir=base_dir
         )
         

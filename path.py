@@ -44,7 +44,7 @@ def optimize_main_graph(dot_file_path, output_image_path):
     shape=box, 
     style=filled, 
     fillcolor=lightblue, 
-    fontname=Arial, 
+    fontname="WenQuanYi Zen Hei", 
     fontsize=10, 
     margin="0.05,0.05",     // 最小内部边距
     height=0.2,             // 最小高度
@@ -53,7 +53,7 @@ def optimize_main_graph(dot_file_path, output_image_path):
   ];
   // 边线样式
   edge [
-    fontname=Arial, 
+    fontname="WenQuanYi Zen Hei", 
     fontsize=8, 
     arrowsize=0.6
   ];

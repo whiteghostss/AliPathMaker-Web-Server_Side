@@ -20,7 +20,8 @@ RUN apt-get update && \
     libgd-dev \
     libfreetype6-dev \
     p7zip-full \
-    bash
+    bash \
+    fonts-wqy-zenhei
 
 # 下载并编译安装最新版 graphviz
 RUN wget https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/13.1.0/graphviz-13.1.0.tar.gz && \

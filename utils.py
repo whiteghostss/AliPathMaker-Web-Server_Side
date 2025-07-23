@@ -390,16 +390,19 @@ def save_source_to_java_file(session_id: str, source: str, class_name: str = "Pa
 
 def package_selected_files(zip_path: str, file_list: list, extra_texts: dict = None, base_dir: str = None):
     """
-    将 file_list 中的所有文件打包进 zip_path。extra_texts 可选，所有文件必须在 base_dir（如 results/{session_id}）下。
+    支持 file_list 为字符串（原有方式）或 (绝对路径, zip内相对路径) 元组。
     """
     if base_dir:
         base_dir = os.path.abspath(base_dir)
     with zipfile.ZipFile(zip_path, 'w') as zipf:
         for file in file_list:
-            abs_file = os.path.abspath(file)
+            if isinstance(file, tuple):
+                abs_file, arcname = file
+            else:
+                abs_file = os.path.abspath(file)
+                arcname = os.path.basename(file)
             if base_dir and not abs_file.startswith(base_dir):
-                raise ValueError(f"文件 {file} 不在指定目录 {base_dir} 下，禁止打包！")
-            arcname = os.path.basename(file)
+                raise ValueError(f"文件 {abs_file} 不在指定目录 {base_dir} 下，禁止打包！")
             zipf.write(abs_file, arcname)
         if extra_texts:
             for fname, content in extra_texts.items():
