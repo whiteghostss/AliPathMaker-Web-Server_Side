@@ -183,7 +183,35 @@ async def analyze_paths(sessionId: str = Form(...)):
     except Exception as e:
         print(f"清理旧文件失败: {e}")
     
-    # 1. 在 results/{sessionId} 目录下执行 comex，生成所有输出
+    # 1. 先执行AST分析
+    try:
+        ast_cmd = [
+            'comex',
+            '--lang', 'java',
+            '--code-file', 'PathAnalysis.java',
+            '--graphs', 'ast',
+            '--output', 'all'
+        ]
+        subprocess.run(ast_cmd, check=True, timeout=60, cwd=output_dir)
+        
+        # 重命名AST分析结果
+        ast_files = ['output.png', 'output.dot', 'output.json']
+        ast_new_names = ['ast_output.png', 'ast_output.dot', 'ast_output.json']
+        
+        for old_name, new_name in zip(ast_files, ast_new_names):
+            old_path = os.path.join(output_dir, old_name)
+            new_path = os.path.join(output_dir, new_name)
+            if os.path.exists(old_path):
+                os.rename(old_path, new_path)
+                
+    except subprocess.CalledProcessError as e:
+        print(f"AST分析失败: {str(e)}")
+        # AST分析失败不影响CFG分析，继续执行
+    except Exception as e:
+        print(f"AST分析异常: {str(e)}")
+        # AST分析异常不影响CFG分析，继续执行
+
+    # 2. 执行CFG分析（保持原有逻辑不变）
     try:
         cmd = [
             'comex',

@@ -109,6 +109,24 @@ async def package_and_download(data: PackageRequest):
                     arcname = os.path.basename(file_name)
                 arc_file_list.append((file_path, arcname))
     
+    # 自动添加AST分析结果到打包列表
+    ast_output_png = os.path.join(base_dir, "ast_output.png")
+    ast_output_dot = os.path.join(base_dir, "ast_output.dot") 
+    ast_output_json = os.path.join(base_dir, "ast_output.json")
+
+    # 检查AST文件是否存在，如果存在则添加到打包列表
+    ast_files = []
+    if os.path.exists(ast_output_png):
+        ast_files.append((ast_output_png, "ast_output.png"))
+    if os.path.exists(ast_output_dot):
+        ast_files.append((ast_output_dot, "ast_output.dot"))
+    if os.path.exists(ast_output_json):
+        ast_files.append((ast_output_json, "ast_output.json"))
+
+    # 将AST文件添加到打包列表
+    file_list.extend([f[0] for f in ast_files])
+    arc_file_list.extend(ast_files)
+    
     # 简化压缩包命名逻辑：只使用方法名和会话ID
     # zip_filename = sessionId
     

@@ -416,5 +416,30 @@ def natural_sort(file_list):
     return sorted(file_list, key=alphanum_key)
 
 
+def rename_ast_output_files(output_dir: str) -> bool:
+    """
+    重命名AST分析结果文件
+    """
+    try:
+        ast_files = ['output.png', 'output.dot', 'output.json']
+        ast_new_names = ['ast_output.png', 'ast_output.dot', 'ast_output.json']
+        
+        for old_name, new_name in zip(ast_files, ast_new_names):
+            old_path = os.path.join(output_dir, old_name)
+            new_path = os.path.join(output_dir, new_name)
+            if os.path.exists(old_path):
+                os.rename(old_path, new_path)
+        return True
+    except Exception as e:
+        print(f"重命名AST文件失败: {e}")
+        return False
+
+
+def validate_ast_output(output_dir: str) -> bool:
+    """
+    验证AST分析结果文件是否存在
+    """
+    ast_files = ['ast_output.png', 'ast_output.dot', 'ast_output.json']
+    return all(os.path.exists(os.path.join(output_dir, f)) for f in ast_files)
 
 
