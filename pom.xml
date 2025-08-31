@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.taobao.ad.brand.bp</groupId>
+        <artifactId>brand-onebp</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>brand-onebp-domain</artifactId>
+    <name>brand-onebp-domain</name>
+    <description>brand-onebp-domain</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.alibaba.abf</groupId>
+            <artifactId>spring-boot-starter-abf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb</groupId>
+            <artifactId>nb-ad-framework-start</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.abf</groupId>
+            <artifactId>abf-plugin-ddd</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.brand</groupId>
+            <artifactId>ad-brandCapability-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.taobao.ad.brand.bp</groupId>
+            <artifactId>brand-onebp-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.taobao.ad.brand.bp</groupId>
+            <artifactId>brand-onebp-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.taobao.ad.brand.bp</groupId>
+            <artifactId>brand-onebp-domain-sdk</artifactId>
+        </dependency>
+        <!-- 兼容包 start -->
+        <dependency>
+            <groupId>com.alibaba.abf</groupId>
+            <artifactId>abf-plugin-isolationv2-cmpt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.abf</groupId>
+            <artifactId>abf-plugin-governance</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb.ssp</groupId>
+            <artifactId>nb-ssp-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb.packages</groupId>
+            <artifactId>nb-packages-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb</groupId>
+            <artifactId>nb-wto-content-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.taobao.ad.brand.perform</groupId>
+            <artifactId>brand-perform-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.uad</groupId>
+            <artifactId>nb-wto-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb</groupId>
+            <artifactId>java-ext</artifactId>
+        </dependency>
+
+<!--        <dependency>-->
+<!--            <groupId>com.alibaba.ad.brand</groupId>-->
+<!--            <artifactId>ad-brand-sdk-view</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.alibaba.ad.brand</groupId>-->
+<!--            <artifactId>ad-brand-sdk-constant</artifactId>-->
+<!--        </dependency>-->
+
+        <dependency>
+            <groupId>com.alibaba.ad.brand</groupId>
+            <artifactId>ad-brand-sdk-view-regulated</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.ad</groupId>
+            <artifactId>ad-biz-definition</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alimama.inventory</groupId>
+            <artifactId>nb-inventory-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>velocity</groupId>
+            <artifactId>velocity</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb.order</groupId>
+            <artifactId>nb-order-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alimama.checkchain</groupId>
+            <artifactId>roger-client-internal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad</groupId>
+            <artifactId>ad-creative-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad</groupId>
+            <artifactId>ad-feed-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.umeng.oplus</groupId>
+            <artifactId>oplus-service-client</artifactId>
+        </dependency>
+        <!-- 兼容包 end -->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.ad.nb.direct</groupId>
+            <artifactId>nb-direct-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alimama.faas.brand-onebp-engine</groupId>
+            <artifactId>brand-onebp-engine-service-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.taobao.ad</groupId>
+            <artifactId>simba-user-interface</artifactId>
+        </dependency>
+        <!-- 淘积木 -->
+        <dependency>
+            <groupId>com.taobao.taojimu</groupId>
+            <artifactId>smart-fortwo-facade</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.aladdin</groupId>
+            <artifactId>ald-lamp-client</artifactId>
+        </dependency>
+
+        <!-- 单元测试依赖 start -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Mockito -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>3.8.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>3.8.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- PowerMock -->
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>2.0.9</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <version>2.0.9</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- ByteBuddy -->
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>1.10.20</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy-agent</artifactId>
+            <version>1.10.20</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- 单元测试依赖 end -->
+
+        <!-- Spring Test 依赖 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+<!--            <version>5.3.23</version>-->
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+
+
+
+
+
+<profiles><profile><id>test-compile</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.8.1</version></plugin></plugins></build></profile></profiles></project>
